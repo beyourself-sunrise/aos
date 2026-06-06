@@ -24,20 +24,19 @@ Enterprise System
 ├─ BPMN Workflow    (workflow-module)        ← 對等：AOS 可啟動流程
 ├─ ERP Services     (各 domain module)       ← 工具：透過 MCP 呼叫
 ├─ HR Services      (user-* modules)         ← 工具：透過 MCP 呼叫
-├─ Other AOS peers  (multi-instance 協作)    ← 同儕：Mastra networks
+├─ Other AOS peers  (multi-instance 協作)    ← 同儕：Kafka topic 協作
 └─ Agent OS         (projects/AOS/)          ← 本文件
    ├─ Agent Identity
-   ├─ Agent Session (long-running, days/weeks)
+   ├─ Agent Session (跨裝置即時追蹤，PG + SSE/WS)
    ├─ Agent Task Inbox (主動觸發收集)
-   ├─ Agent Tool Gateway (MCP)
-   ├─ Agent Memory (observational + working)
-   ├─ Agent Policy (AOP 攔截)
-   ├─ Agent Audit
-   └─ Agent Runtime (Mastra-based)
-       ├─ Background Tasks
-       ├─ Supervisor Agent
-       ├─ Schedules (cron)
-       └─ Signals / Channels
+   ├─ Agent Tool Gateway (MCP client/server)
+   ├─ Agent Memory (pgvector + observational)
+   ├─ Agent Audit (落既有 audit_event)
+   └─ Agent Runtime (Pi SDK-based)
+       ├─ Pi Agent class (執行單位)
+       ├─ AOS Adapter (長程管理者)
+       ├─ Self-written Schedules (croner)
+       └─ Self-written Signals / Channels
 ```
 
 ## Owns
@@ -53,12 +52,20 @@ Agent 作為系統使用者存在。
 - Agent Role（角色權限）
 - 引用但不擁有 user/org/role master data（歸 user-* / organize-module / role-module）
 
-#### 2. Agent Session
+#### 2. Agent Session（含跨裝置即時追蹤）
 Session 屬於 Agent，為 Agent 的工作上下文。
-- **長期連續性**：跨日、跨週的 session 持久化
+- **長期連續性**：跨日、跨週的 session 持久化（PG-backed `SessionStorage`）
+- **跨裝置即時追蹤**：任何裝置可訂閱同一 session；session 變更透過 Kafka + SSE/WS 即時推送
 - **suspend / resume**：可暫停、恢復、跨裝置接續
-- **Context compaction**：自動壓縮對話歷史
-- **Observational Memory**：管理 context window
+- **Context compaction**：自動壓縮對話歷史（Pi SDK 內建）
+- **衝突解決**：PG 樂觀鎖偵測多寫者（last-write-wins 或 retry）
+- **設計原點**：Pi SDK 設計為「單一 Agent 程序持有 session」；AOS 自寫 PG `SessionStorage` 實作 + 即時通訊層
+- **實作元件**（5 個，共 850-1,600 行）：
+  1. `PgSessionStorage`（Pi SessionStorage 介面的 PG 實作）
+  2. `SessionEventBus`（session.appendEntry → Kafka publish）
+  3. `RealTimeStreamService`（SSE/WS 推播）
+  4. `ConflictResolver`（樂觀鎖衝突偵測）
+  5. `SubscriptionRegistry`（追蹤訂閱者）
 
 #### 3. Agent Task Inbox
 AOS 觸發後的工作集合，**不僅限於 BPMN**：
@@ -68,13 +75,17 @@ AOS 觸發後的工作集合，**不僅限於 BPMN**：
 - **AOS 主動建立的任務**（proactive tasks）
 - **同儕 AOS 訊息**（peer tasks）
 
-#### 4. Agent Runtime
+#### 4. Agent Runtime（Pi SDK-based）
 Agent 接收、理解（LLM-powered）、執行、完成任務的運行環境。
-- LLM 抽象（透過 Mastra 與 agent-gateway）
-- Tool calling loop
+- **核心 runtime**：`@earendil-works/pi-agent-core`（8K lines / MIT）— Agent class、tool calling loop、events
+- **LLM 抽象**：`@earendil-works/pi-ai`（31K lines / MIT）— 18 個 LLM providers 統一抽象
+- **JSON Schema 驗證**：typebox（編譯時 schema，Pi 內建；零 runtime overhead）
+- Tool calling loop（Pi 內建）
 - 結構化輸出
 - 推理與規劃
 - **Long-running execution**（天/週/月級任務）
+- **AOS Adapter 層**：包裝 Pi Agent 為「執行單位」，處理 proactive lifecycle（suspend / resume / 跨觸發源）
+- **LLM 統一入口**：候選 — 既有 `agent-gateway`（FastAPI LiteLLM）或 Pi AI 直接呼叫（待 `aos-pi-poc` 評估）
 
 #### 5. Agent Tool Gateway
 統一管理 AOS 可用的系統能力。
@@ -160,22 +171,60 @@ AOS 明確不擁有下列職責，避免重疊：
 | `user-core-module` | 引用 | Agent User 是 User 的擴展，AOS 引用不擁有 |
 | `user-organize-module` | 引用 | Agent 歸屬於組織部門 |
 | `user-role-module` | 引用 | Agent 角色權限 |
-| `projects/agent/` | 對等（同為 agent 相關 surface） | 既有 worker 透過 Mastra / Pi SDK 整合；AOS 是 proactive 平台，worker 是具體執行 |
+| `projects/agent/` | 對等（同為 agent 相關 surface） | 既有 worker 可透過 Pi SDK 整合；AOS 是 proactive 平台，worker 是具體執行 |
 | `agent-workspace/` | 不同層次 | AOS 是 product runtime；agent-workspace 是 dev-agent bootstrap |
-| `agent-gateway` | 服務消費者（候選） | AOS 透過 LiteLLM proxy 呼叫 LLM（評估是否直接用 Mastra LLM 抽象） |
+| `agent-gateway` | 服務消費者（候選） | AOS 透過 LiteLLM proxy 呼叫 LLM（待 `aos-pi-poc` 評估 vs Pi AI 直接） |
 | 各 backend module | 工具提供者 | 透過 MCP server 暴露為 AOS 工具 |
 
-## Tech Stack
+## Tech Stack（Pi SDK 拼裝式 — 零 License 風險）
 
-| 元件 | 選型 | 理由 |
-|------|------|------|
-| **語言** | TypeScript / Node.js 22+ | 與 Vue 3 前端、agent-gateway、agent worker 共用 |
-| **AOS Runtime** | **Mastra** | 內建 background tasks / supervisor / networks / signals / schedules / channels / MCP / observational memory — 完整對應 proactive agent 需求 |
-| **LLM Gateway** | 既有 `agent-gateway` (LiteLLM) 或 Mastra 內建 LLM 抽象 | 評估中（Mastra 也可統一） |
-| **Storage** | PostgreSQL + pgvector | 既有 schema-registry 已用；Mastra 支援 |
-| **Audit log** | 既有 audit_event 表 + AOS 自有 schema | 雙軌（同步至 Beyourself 既有 audit） |
-| **Kafka** | 既有 schema-registry（27 個 schema） | AOS 訂閱需要的 event |
-| **BPMN** | 既有 workflow-module（Camunda 7 7.21.0） | AOS 透過 REST API 啟動流程 |
+> **變更說明**：`aos-runtime-tech-stack` 翻轉先前 `aos-proactive-architecture` 對 Mastra 的採用決議。**Mastra EE License 長期維護風險**與**Pi SDK 為 AOS 路徑量身打造**的評估後，改採「**Pi SDK 為核心 + OSS 工具拼裝**」策略。
+
+| 元件 | 選型 | License | 理由 |
+|------|------|---------|------|
+| **語言** | TypeScript / Node.js 22+ | — | 與 Vue 3 前端、agent-gateway、agent worker 共用 |
+| **AOS Runtime 核心** | **`@earendil-works/pi-agent-core`** | **MIT** | Agent class、tool calling loop、events；AOS 用 Pi Agent 為「執行單位」 |
+| **LLM 抽象** | **`@earendil-works/pi-ai`** | **MIT** | 18 個 LLM providers 統一抽象（OpenAI、Anthropic、Google、Mistral、Bedrock、Azure、Cloudflare、Vertex...） |
+| **MCP 整合** | **`@modelcontextprotocol/sdk`** | **MIT** | 官方 MCP SDK；AOS 為 client（呼叫 26 backend） |
+| **Schedules** | **`croner`** | **MIT** | cron-like 排程 |
+| **Kafka** | **`kafkajs`** | **MIT** | session event bus + 觸發源 + 跨 AOS 協作 |
+| **Slack / IM** | **`@slack/bolt`** | **MIT** | Slack 觸發源 |
+| **即時通訊** | **`socket.io`** | **MIT** | 跨裝置即時追蹤 SSE/WS |
+| **Storage** | PostgreSQL + pgvector | PostgreSQL License | 既有 schema-registry 已用；AOS 自寫 `SessionStorage` PG impl |
+| **HTTP framework** | **Fastify** + `@fastify/websocket` | **MIT** | 高效能 HTTP 框架 |
+| **Audit log** | 既有 audit_event 表 + AOS 自有 schema | — | 雙軌（同步至 Beyourself 既有 audit） |
+| **OpenTelemetry** | **`@opentelemetry/*`** | **Apache-2.0** | tracing、metrics（待 MVP 評估） |
+| **BPMN** | 既有 workflow-module（Camunda 7 7.21.0） | — | AOS 透過 REST API 啟動流程 |
+
+### 為什麼選 Pi SDK 而非 Mastra？
+
+| 維度 | Pi SDK | Mastra |
+|------|--------|--------|
+| License | **MIT 整個 monorepo** | ⚠️ Apache-2.0 + EE 雙軌制 |
+| AOS 用到的程式碼量 | **40K lines** | 63K lines |
+| 依賴複雜度 | 4 deps | 28 deps |
+| EE 風險 | ✅ 零 | ❌ 持續需隔離 + 監控 |
+| AOS 用不到的進階功能 | 不存在 | npm tarball 內含 |
+
+### AOS 自寫而非依賴的 Pi SDK 缺失功能
+
+| 功能 | 自寫方式 | 工作量 |
+|------|---------|--------|
+| **跨裝置即時同步 session** | PG `SessionStorage` + Kafka + SSE/WS + 樂觀鎖 | 1-1.5 月 |
+| **Schedules** | croner 套件 + AOS 排程表 | 1 週 |
+| **Channels（Slack/IM）** | `@slack/bolt` 整合 | 2 週 |
+| **Workflows（suspend/resume）** | 自寫簡化版 state machine + PG | 4 週 |
+| **Multi-AOS networks** | Kafka topic 當 message bus | 2 週 |
+| **長期 Memory + vector search** | pgvector + 自寫 semantic recall | 4 週 |
+
+### 不需要的 Pi SDK 進階功能
+
+- Pi SDK 內建 Working Memory / Observational Memory：可直接用或 AOS 自寫（看使用經驗）
+- Pi SDK 內建 Compaction：AOS 直接用
+
+### 套件完整依賴清單
+
+詳見 `temp/aos-final-decision.md` 附錄 B（含版本號）。
 
 ## Phase 1 Scope（規劃中）
 
@@ -190,4 +239,5 @@ AOS 明確不擁有下列職責，避免重疊：
 
 若本文件與 `openspec/specs/aos-*/` 衝突，以 OpenSpec spec 為準。
 若本文件與 workspace topology 文件衝突，以 topology 文件為準。
-若本文件與先前的 `establish-aos-folder` change 衝突，**本文件取代之**（設計哲學翻轉的結果）。
+若本文件與 `aos-proactive-architecture` change 衝突，**本文件取代其技術棧決議**（Pi SDK 取代 Mastra）。
+若本文件與 `aos-runtime-tech-stack` change 衝突，以 OpenSpec spec 為準（本文件同步該 change）。
