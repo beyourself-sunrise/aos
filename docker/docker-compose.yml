@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  aos-app:
+    build: ..
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/beyourself
+      - WORKFLOW_BASE_URL=http://host.docker.internal:8080/engine-rest
+      - MCP_USER_CORE_URL=http://host.docker.internal:8081/mcp/sse
+      - CRON_TIMEZONE=Asia/Taipei
+    depends_on:
+      - postgres
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=beyourself
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
