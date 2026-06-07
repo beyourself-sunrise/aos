@@ -55,20 +55,7 @@ export class WebhookTrigger implements Trigger {
 
     this.server = Fastify({ logger: true });
 
-    // Set body limit
-    this.server.addHook('onRawRequest', (req, _res, callback) => {
-      let data = '';
-      req.on('data', chunk => {
-        data += chunk;
-        if (data.length > this.maxPayloadSize) {
-          req.destroy();
-        }
-      });
-      req.on('end', callback);
-    });
-
     // Register the webhook route
-    this.server.addHook('onRoute', () => {});
     this.server.route({
       method: this.method as any,
       url: this.path,

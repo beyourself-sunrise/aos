@@ -9,7 +9,7 @@
 
 import { FastifyInstance } from 'fastify';
 import { WebhookTrigger, WebhookTriggerOptions } from '../../adapters/trigger/webhook/webhook-trigger';
-import type { TriggerHandler } from '../../../interfaces/trigger';
+import type { TriggerHandler } from '../../interfaces/trigger';
 
 export default async function webhookRoutes(app: FastifyInstance, options?: { prefix?: string }): Promise<void> {
   const prefix = options?.prefix ?? '/api/aos';
