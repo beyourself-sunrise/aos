@@ -239,6 +239,8 @@ AOS 自有架構 vs 採用 monolithic framework：
 
 ## Phase 1 Scope（規劃中）
 
+> 完整 roadmap / 依賴 DAG / 時間軸詳見 [ROADMAP.md](./ROADMAP.md)（SSOT）。
+
 - 1 個示範 AI 員工（單一 Agent 實例）
 - 3 種觸發源（cron、Kafka、人類 Slack 訊息）
 - 1 個 workflow 啟動範例
@@ -250,5 +252,6 @@ AOS 自有架構 vs 採用 monolithic framework：
 
 若本文件與 `openspec/specs/aos-*/` 衝突，以 OpenSpec spec 為準。
 若本文件與 workspace topology 文件衝突，以 topology 文件為準。
+若本文件與 [ROADMAP.md](./ROADMAP.md) 衝突，以 ROADMAP.md 為準（本檔同步 roadmap）。
 若本文件與 `aos-proactive-architecture` change 衝突，保留其主動設計哲學；本 change 補充 AOS 介面與拼裝式 OSS 策略。
 若本文件與 `aos-runtime-tech-stack` change 衝突，以 OpenSpec spec 為準（本文件同步該 change）。

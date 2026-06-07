@@ -167,18 +167,24 @@ AOS 自有架構（拼裝式）vs 採用 monolithic framework：
 
 ## 當前狀態
 
-**Phase 0**：命名空間（`establish-aos-folder`，PR #1160） ✅  
-**Phase 1a**：設計哲學翻轉（`aos-proactive-architecture`，PR #1162） ✅  
-**Phase 1b**：技術棧策略確立（`aos-runtime-tech-stack`，本 README 反映） 🔄  
-**Phase 2**：POC + 跨裝置設計（`aos-poc` + `aos-cross-device-session-realtime`，2 週 + 1.5 月）  
-**Phase 3**：MVP（`aos-mvp` + Storage + MCP bridge + Triggers，2-3 月）  
-**Phase 4**：進階（Workflows + Observational Memory + Multi-AOS Networks，3-4 月）
+> 完整 roadmap / 依賴 DAG / 時間軸詳見 [ROADMAP.md](./ROADMAP.md)（SSOT）。
+
+| Phase | Change | 狀態 |
+|-------|--------|------|
+| Phase 0 | `establish-aos-folder` | ✅ Done |
+| Phase 1a | `aos-proactive-architecture` | ✅ Done |
+| Phase 1b | `aos-runtime-tech-stack` + cleanup + shared memory | ✅ Done |
+| **Phase 2** | `aos-poc` | 🟡 **Scaffolded — 待實作** |
+
+**下一步**：`aos-poc` 開始實作（2 週工作量；9 個 verification step 詳見 [ROADMAP.md](./ROADMAP.md)）。
 
 ## 文件
 
+- [ROADMAP.md](./ROADMAP.md) — 開發順序 SSOT（9 個 change + 依賴 DAG + 時間軸）
 - [RESPONSIBILITY.md](./RESPONSIBILITY.md) — 職責邊界（SSOT）
-- `openspec/changes/aos-runtime-tech-stack/` — 本次技術棧策略 change（含 `refs/aos-final-decision.md` 完整決議版）
+- `openspec/changes/aos-runtime-tech-stack/` — 技術棧策略 change（含 `refs/aos-final-decision.md` 完整決議版）
 - `openspec/changes/aos-proactive-architecture/` — 設計哲學翻轉 change
+- `openspec/changes/aos-poc/` — 端到端 POC change
 - `openspec/changes/establish-aos-folder/` — 命名空間建立 change
 - `openspec/specs/aos-*/` — 規範性需求（後續開）
 
