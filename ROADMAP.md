@@ -4,7 +4,7 @@
 >
 > 任何 AOS 相關的 roadmap / 排程 / 階段劃分，**都以此檔為準**。本檔不在 `openspec/changes/<X>/` 內（不是 single change scope），不在 `temp/` 內（不是臨時文件），不在 `docs/architecture/` 內（不是 workspace topology）— 是 `projects/AOS/` 自己的 AOS-level roadmap。
 
-## 當前狀態（截至 2026-06-07，PR #1170）
+## 當前狀態（截至 2026-06-07，PR #1180）
 
 | Phase | Change | PR | 狀態 |
 |-------|--------|-----|------|
@@ -14,14 +14,20 @@
 | Phase 1b-cleanup | `aos-proactive-architecture` Supersession Notice | #1166 + #1167 | ✅ Done |
 | Phase 1b-docs | AOS 設計哲學 + 自有架構 shared memory | #1169 | ✅ Done |
 | Phase 1b-roadmap | AOS Roadmap SSOT（ROADMAP.md） | #1171 | ✅ Done |
-| **Phase 2** | **`aos-poc`（scaffold）** | **#1170** | 🟡 **Scaffolded — 42 tasks pending** |
-| **P0** | **`aos-pg-session-storage`** | **本 PR** | ✅ **Done — PG impl + tests** |
-| **P0 (scaffold)** | **`aos-cross-device-session-realtime`（scaffold）** | **本 PR** | 🟡 **Scaffolded — 待實作** |
+| **Phase 2** | **`aos-poc` 實作** | **#1175** | ✅ **Done — 8 介面 + 5 adapters + 4 examples + 14 tests** |
+| **P0** | **`aos-pg-session-storage` 實作** | **#1176** | ✅ **Done — PG schema + PgSessionStorage + 27+21 tests** |
+| **P0** | **`aos-cross-device-session-realtime` 實作** | **#1177** | ✅ **Done — 4 元件 + Fastify+socket.io + Vue3 + 14 tests** |
+| **P0 closeout** | **3 個 P0 change 收尾** | **#1178 + #1180** | ✅ **Done — archive 3 changes** |
+
+**P0 全部 ✅ Done（2026-06-07）**：
+- 3 個 P0 OpenSpec change 全部 archive 進入 `openspec/changes/archive/2026-06-07-*/`
+- 29 個 AOS src 檔案 + 12 個 test 檔案 + 4 個 migration SQL 全部在 master
+- 既有 26 backend module + workflow-module 零變更
+- 9 個 governance 檢查全綠（check-change-explainer / source-manifest / archive-readiness × 3）
 
 **下一步可開工**：
-1. `aos-poc`（2 週）— 驗證 AOS 介面可實作
-2. `aos-pg-session-storage`（3 週）— `PgSessionStorage` 實作（需 `aos-poc` 完成）
-3. `aos-cross-device-session-realtime`（1-1.5 月）— 跨裝置同步（需 `aos-poc` + `aos-pg-session-storage` 完成）
+1. **P1 開工**：可選 3 個 — `aos-mcp-tools-bridge`（3 週）/ `aos-triggers`（4 週）/ `aos-mvp`（2 月）
+2. P2 進階：`aos-workflows` / `aos-observational-memory` / `aos-multi-aos-networks`
 
 ---
 
