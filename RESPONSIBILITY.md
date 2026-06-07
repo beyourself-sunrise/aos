@@ -60,10 +60,10 @@ Session 屬於 Agent，為 Agent 的工作上下文。
 - **衝突解決**：PG 樂觀鎖偵測多寫者（last-write-wins 或 retry）
 - **介面與實作分離**：`SessionStorage` 與 `Realtime` 為 AOS 介面；實作層綁定 PG + Kafka + socket.io
 - **實作元件**（5 個，共 850-1,600 行）：
-  1. `PgSessionStorage`（AOS `SessionStorage` 介面的 PG 實作）
+  1. `PgSessionStorage`（AOS `SessionStorage` 介面的 PG 實作 — ✅ 已實作，含樂觀鎖 + migration）
   2. `SessionEventBus`（session.appendEntry → Kafka publish）
   3. `RealTimeStreamService`（SSE/WS 推播）
-  4. `ConflictResolver`（樂觀鎖衝突偵測）
+  4. `ConflictResolver`（樂觀鎖衝突偵測 — ✅ 已實作，純函數 + 指數退避）
   5. `SubscriptionRegistry`（追蹤訂閱者）
 
 #### 3. Agent Task Inbox
