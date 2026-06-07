@@ -15,7 +15,7 @@
 | Phase 1b-docs | AOS 設計哲學 + 自有架構 shared memory | #1169 | ✅ Done |
 | Phase 1b-roadmap | AOS Roadmap SSOT（ROADMAP.md） | #1171 | ✅ Done |
 | **Phase 2** | **`aos-poc`（scaffold）** | **#1170** | 🟡 **Scaffolded — 42 tasks pending** |
-| **P0 (scaffold)** | **`aos-pg-session-storage`（scaffold）** | **本 PR** | 🟡 **Scaffolded — 待實作** |
+| **P0** | **`aos-pg-session-storage`** | **本 PR** | ✅ **Done — PG impl + tests** |
 | **P0 (scaffold)** | **`aos-cross-device-session-realtime`（scaffold）** | **本 PR** | 🟡 **Scaffolded — 待實作** |
 
 **下一步可開工**：
