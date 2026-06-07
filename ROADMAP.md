@@ -13,9 +13,15 @@
 | Phase 1b | `aos-runtime-tech-stack` | #1163 + #1164 | ✅ Done |
 | Phase 1b-cleanup | `aos-proactive-architecture` Supersession Notice | #1166 + #1167 | ✅ Done |
 | Phase 1b-docs | AOS 設計哲學 + 自有架構 shared memory | #1169 | ✅ Done |
+| Phase 1b-roadmap | AOS Roadmap SSOT（ROADMAP.md） | #1171 | ✅ Done |
 | **Phase 2** | **`aos-poc`（scaffold）** | **#1170** | 🟡 **Scaffolded — 42 tasks pending** |
+| **P0 (scaffold)** | **`aos-pg-session-storage`（scaffold）** | **本 PR** | 🟡 **Scaffolded — 待實作** |
+| **P0 (scaffold)** | **`aos-cross-device-session-realtime`（scaffold）** | **本 PR** | 🟡 **Scaffolded — 待實作** |
 
-**下一步可開工**：`aos-poc` 開始實作介面 + adapters + 整合測試（2 週工作量）。
+**下一步可開工**：
+1. `aos-poc`（2 週）— 驗證 AOS 介面可實作
+2. `aos-pg-session-storage`（3 週）— `PgSessionStorage` 實作（需 `aos-poc` 完成）
+3. `aos-cross-device-session-realtime`（1-1.5 月）— 跨裝置同步（需 `aos-poc` + `aos-pg-session-storage` 完成）
 
 ---
 
