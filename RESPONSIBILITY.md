@@ -248,6 +248,16 @@ AOS 自有架構 vs 採用 monolithic framework：
 - 與 1 個 backend module 透過 MCP 整合
 - Audit log 落 Beyourself 既有 audit_event 表
 
+### MCP Tools Bridge（`aos-mcp-tools-bridge` P1）
+
+`mcp-server-spring-boot-starter` 由 `common-module` 提供，26 backend module 引入後自動暴露 `/mcp` endpoint。
+
+- **MCP server 端**：`common-module/mcp-server-spring-boot-starter/` 提供 `@EnableMcpServer` + `@Tool` annotation + SSE + JSON-RPC 2.0 transport
+- **Tool registry**：`mcp_tool_registry` PG 表，AOS 啟動時載入（`adapters/mcp/discovery/tool-registry-client.ts`）
+- **Audit 整合**：每個 MCP tool call 落 `aos.mcp.tool.called` 事件到 `audit_event` 表
+- **26 module MCP 化**：各 module `pom.xml` 加 1 行 dependency + `@EnableMcpServer` 即可
+- **零業務邏輯變更**：既有 REST API / 業務邏輯 / DB schema 不變
+
 ## Conflict Rule
 
 若本文件與 `openspec/specs/aos-*/` 衝突，以 OpenSpec spec 為準。

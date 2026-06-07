@@ -18,12 +18,22 @@
 | **P0** | **`aos-pg-session-storage` 實作** | **#1176** | ✅ **Done — PG schema + PgSessionStorage + 27+21 tests** |
 | **P0** | **`aos-cross-device-session-realtime` 實作** | **#1177** | ✅ **Done — 4 元件 + Fastify+socket.io + Vue3 + 14 tests** |
 | **P0 closeout** | **3 個 P0 change 收尾** | **#1178 + #1180** | ✅ **Done — archive 3 changes** |
+| **P1** | **`aos-mcp-tools-bridge` 實作** | **—** | ✅ **Done — 26 module MCP 化 + tool registry + 整合測試** |
 
 **P0 全部 ✅ Done（2026-06-07）**：
 - 3 個 P0 OpenSpec change 全部 archive 進入 `openspec/changes/archive/2026-06-07-*/`
 - 29 個 AOS src 檔案 + 12 個 test 檔案 + 4 個 migration SQL 全部在 master
 - 既有 26 backend module + workflow-module 零變更
 - 9 個 governance 檢查全綠（check-change-explainer / source-manifest / archive-readiness × 3）
+
+**P1 `aos-mcp-tools-bridge` ✅ Done（2026-06-07）**：
+- `mcp-server-spring-boot-starter` library（`@EnableMcpServer` + `@Tool` + SSE + JSON-RPC 2.0）
+- 26 backend module 引入 starter（pom.xml dependency + `@EnableMcpServer`）
+- `mcp_tool_registry` PG 表 + migration（0003_create_mcp_tool_registry）
+- AOS `adapters/mcp/discovery/tool-registry-client.ts`（啟動載入 + 5 分鐘 refresh）
+- 整合測試（26 module × 1 個代表性 tool）
+- `audit_event` 整合（`aos.mcp.tool.called` 事件）
+- ZERO 業務邏輯變更到 26 backend module 和 workflow-module
 
 **下一步可開工**：
 1. **P1 開工**：可選 3 個 — `aos-mcp-tools-bridge`（3 週）/ `aos-triggers`（4 週）/ `aos-mvp`（2 月）
