@@ -18,7 +18,6 @@
 | **P0** | **`aos-pg-session-storage` 實作** | **#1176** | ✅ **Done — PG schema + PgSessionStorage + 27+21 tests** |
 | **P0** | **`aos-cross-device-session-realtime` 實作** | **#1177** | ✅ **Done — 4 元件 + Fastify+socket.io + Vue3 + 14 tests** |
 | **P0 closeout** | **3 個 P0 change 收尾** | **#1178 + #1180** | ✅ **Done — archive 3 changes** |
-| **P1** | **`aos-triggers` 實作** | **（本 change）** | ✅ **Done — 4 trigger adapter + webhook route + migration + integration tests** |
 
 **P0 全部 ✅ Done（2026-06-07）**：
 - 3 個 P0 OpenSpec change 全部 archive 進入 `openspec/changes/archive/2026-06-07-*/`
@@ -54,7 +53,7 @@
 | Change | 工作量 | 啟動條件 | 成功標準 |
 |--------|--------|----------|----------|
 | **`aos-mcp-tools-bridge`** | 3 週 | `aos-poc` 完成 | 26 backend module 全量 MCP 化（per-module MCP server 或共用 gateway，待 spec 確認）；tool schema 註冊；整合測試 |
-| **`aos-triggers`** | 4 週 | `aos-poc` 完成 | ✅ **Done** — `Trigger` 介面 Kafka / Slack / 報表 / Webhook 實作；`croner` 已在 `aos-poc` 內；4 種觸發源整合測試 |
+| **`aos-triggers`** | 4 週 | `aos-poc` 完成 | `Trigger` 介面 Kafka / Slack / 報表 / Webhook 實作；`croner` 已在 `aos-poc` 內；4 種觸發源整合測試 |
 | **`aos-mvp`** | 2 月 | P0 + P1 全部完成 | 多 Agent 實例、Observational Memory（v1）、Workflows（v1）、完整 audit log；10 user persona 案例 |
 
 **為何 P1**：
