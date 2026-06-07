@@ -9,7 +9,7 @@
  * 5. Shared TriggerHandler.onTrigger unification
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { KafkaTrigger } from '../src/adapters/trigger/kafka/kafka-trigger';
 import { SlackTrigger } from '../src/adapters/trigger/slack/slack-trigger';
 import { ReportTrigger } from '../src/adapters/trigger/report/report-trigger';

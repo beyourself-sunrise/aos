@@ -1,119 +1,115 @@
-# Triggers 接入指南
+# AOS Triggers Runbook
 
-## 概述
+## Overview
 
-AOS 支援 5 種觸發源（4 種本 change 新增 + 1 種既有）：
+AOS has 5 trigger adapters that implement the `Trigger` interface, all routing through a shared `TriggerHandler.onTrigger(event)` callback:
 
-| 觸發源 | 類別 | 實作 | License |
-|--------|------|------|---------|
-| Cron | `CronTrigger` | `croner` | MIT |
-| Kafka | `KafkaTrigger` | `kafkajs` | Apache-2.0 |
-| Slack | `SlackTrigger` | `@slack/bolt` | MIT |
-| 報表 | `ReportTrigger` | `croner` + `pg` | MIT + PostgreSQL |
-| Webhook | `WebhookTrigger` | `fastify` + HMAC | MIT |
+| Trigger | Adapter | OSS | Purpose |
+|---------|---------|-----|---------|
+| Cron | `CronTrigger` | `croner` (MIT) | Scheduled tasks |
+| Kafka | `KafkaTrigger` | `kafkajs` (Apache-2.0) | Event consumption from 27 topics |
+| Slack | `SlackTrigger` | `@slack/bolt` (MIT) | Slack Socket Mode mentions |
+| Report | `ReportTrigger` | `croner` + `pg` | PG aggregate anomaly detection |
+| Webhook | `WebhookTrigger` | `fastify` + HMAC | External HTTPS POST with HMAC SHA-256 |
 
-所有 trigger 透過 **`TriggerHandler.onTrigger(event)`** 統一 callback 進入 AOS 流程。
+## Configuration
 
-## 啟動
+### Environment Variables
 
-所有 trigger 在 `projects/AOS/src/index.ts` bootstrap 中統一啟動：
+```bash
+# Kafka
+KAFKA_BROKERS=localhost:9092
+KAFKA_WHITELIST=user-attendance.anomaly-detected,cost-collection.expense-submitted,sales.order-created
 
-```ts
-const triggers: Trigger[] = [
-  cronTrigger,    // Daily 9:00 AM
-  kafkaTrigger,   // kafkajs consumer
-  slackTrigger,   // @slack/bolt Socket Mode
-  reportTrigger,  // cron + PG aggregate
-  webhookTrigger, // Fastify HTTP POST
-];
+# Slack
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_APP_TOKEN=xapp-...
 
-for (const trigger of triggers) {
-  await trigger.start(handler);
-}
+# Webhook secrets (one per source)
+WEBHOOK_SECRET_ERPNEXT=...
+WEBHOOK_SECRET_GITHUB=...
+WEBHOOK_SECRET_CUSTOM=...
+
+# Database (for ReportTrigger and audit)
+DATABASE_URL=postgresql://localhost:5432/beyourself
 ```
 
-## 環境變數
+### Kafka Whitelist
 
-| 變數 | 預設值 | 用途 |
-|------|--------|------|
-| `KAFKA_BROKERS` | `localhost:9092` | Kafka broker 位址 |
-| `KAFKA_WHITELIST` | `user-attendance.anomaly-detected,cost-collection.expense-submitted,sales.order-created` | Kafka 白名單 topic |
-| `SLACK_BOT_TOKEN` | `xoxb-placeholder` | Slack Bot Token |
-| `SLACK_APP_TOKEN` | `xapp-placeholder` | Slack App Token（Socket Mode） |
-| `WEBHOOK_SECRET_ERPNEXT` | `erpnext-secret` | ERPNext webhook HMAC secret |
-| `WEBHOOK_SECRET_GITHUB` | `github-secret` | GitHub webhook HMAC secret |
-| `WEBHOOK_SECRET_CUSTOM` | `custom-secret` | Custom webhook HMAC secret |
+The `KafkaTrigger` subscribes to all 27 existing Kafka topics but only processes events from whitelisted topics. Configure via `KAFKA_WHITELIST` (comma-separated) or the `aos_trigger_subscription` table.
 
-## 個別 Trigger 設定
+Available topics:
+- `user-attendance.clock-in`, `user-attendance.clock-out`, `user-attendance.anomaly-detected`, `user-attendance.absence-recorded`
+- `user-payroll.salary-calculated`, `user-payroll.bonus-calculated`, `user-payroll.payroll-finalized`, `user-payroll.dependent-updated`
+- `cost-collection.expense-submitted`, `cost-collection.expense-approved`, `cost-collection.expense-rejected`, `cost-collection.cost-category-updated`
+- `inventory.stock-adjusted`, `inventory.stock-low`, `inventory.item-created`
+- `procurement.purchase-order-created`, `procurement.purchase-order-approved`, `procurement.vendor-updated`
+- `manufacturing.work-order-created`, `manufacturing.work-order-completed`
+- `sales.order-created`, `sales.order-shipped`, `sales.invoice-generated`
+- `hr.employee-onboarded`, `hr.employee-offboarded`, `hr.role-changed`
+- `system.audit-event`
 
-### KafkaTrigger
+### Slack Socket Mode
 
-- 訂閱 27 個既有 Kafka topic
-- 白名單過濾：只有白名單內的 topic 會觸發 handler
-- 白名單透過 `KAFKA_WHITELIST` 環境變數設定（逗號分隔）
-- 未設定白名單時，預設接受 `user-attendance.anomaly-detected`、`cost-collection.expense-submitted`、`sales.order-created`
+The `SlackTrigger` uses Socket Mode (no public webhook URL needed). Configure with:
+- `SLACK_BOT_TOKEN` — Bot OAuth token (`xoxb-...`)
+- `SLACK_APP_TOKEN` — App-level token (`xapp-...`) for Socket Mode
 
-### SlackTrigger
+The trigger listens for:
+- `app_mention` — `@AOS` mentions in channels
+- `message.im` — Direct messages to the AOS bot
 
-- 使用 `@slack/bolt` Socket Mode（不暴露公開 HTTP endpoint）
-- 監聽事件：`app_mention`（channel @AOS）、`message.im`（DM 給 AOS）
-- 需要 Slack App Token（xapp-...）+ Bot Token（xoxb-...）
-- Dev 環境使用 mock events（不接真實 Slack）
+### Report Anomaly Thresholds
 
-### ReportTrigger
+The `ReportTrigger` runs scheduled aggregate queries and detects anomalies:
 
-- 使用 `croner` 框架定時執行 PG aggregate query
-- 內建 2 個報表查詢：
-  1. `expense-claim-spike` — 過去 7 天 expense claim 數量
-  2. `attendance-anomaly` — 過去 24 小時缺席數量
-- 異常閾值：`currentValue > baseline * threshold`
-- threshold 預設 2.0（可透過 config 調整）
-
-### WebhookTrigger
-
-- Fastify HTTP POST endpoint（預設 `/api/aos/webhook`）
-- HMAC SHA-256 簽名驗證（header `X-AOS-Signature`）
-- Multi-source 支援：每個 source 獨立 secret
-- 預設 source：`erpnext`、`github`、`custom`
-- Accept header `X-AOS-Source` 指定來源（可省略時嘗試所有 secret）
-- 最大 payload：1MB
-
-## 白名單設定
-
-白名單目前透過 `KAFKA_WHITELIST` 環境變數設定。未來可擴充至 `aos_trigger_subscription` 表。
-
-## HMAC Secret 管理
-
-Webhook secret 目前透過環境變數傳遞。security-module 的加密工具可擴充為 DB 儲存（`aos_trigger_subscription.secret_encrypted` 欄位）。
-
-## 異常閾值設定
-
-Report trigger 的異常閾值在 `index.ts` bootstrap 中設定：
-
-```ts
+```typescript
+// Example configuration
 {
-  name: 'expense-claim-spike',
-  baseline: 50,       // 基準值
-  threshold: 2.0,     // 當 currentValue > 50 * 2.0 = 100 時觸發
+  schedule: '0 * * * *',  // Every hour
+  queries: [
+    {
+      name: 'expense-claim-spike',
+      query: 'SELECT COUNT(*) as count FROM expense_claim WHERE created_at > NOW() - INTERVAL \'7 days\'',
+      baseline: 50,
+      threshold: 2.0,  // Alert when value > baseline * threshold
+      description: 'Weekly expense claim count vs 30-day baseline',
+    },
+  ],
 }
 ```
 
-## 整合 Audit
+An anomaly is detected when: `currentValue > baseline * threshold`
 
-每種 trigger 收到事件時，透過 `AuditEventBridge` 寫入 `audit_event` 表：
+### Webhook HMAC
 
-- `aos.trigger.kafka.received`
-- `aos.trigger.slack.received`
-- `aos.trigger.report.received`
-- `aos.trigger.webhook.received`
+The `WebhookTrigger` verifies HMAC SHA-256 signatures on incoming POST requests:
 
-欄位：`{ source, eventSummary, receivedAt }`
+1. Each source registers with a unique secret in `aos_trigger_subscription`
+2. Sender computes: `HMAC-SHA256(secret, request_body)` → hex string
+3. Sender includes signature in `X-AOS-Signature` header
+4. Sender identifies source in `X-AOS-Source` header (optional)
+5. AOS verifies signature using timing-safe comparison
 
-## Database 遷移
+Example (curl):
+```bash
+SECRET="your-secret"
+BODY='{"event": "test"}'
+SIGNATURE=$(echo -n "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
+
+curl -X POST http://localhost:3000/api/aos/webhook \
+  -H "Content-Type: application/json" \
+  -H "X-AOS-Signature: $SIGNATURE" \
+  -H "X-AOS-Source: erpnext" \
+  -d "$BODY"
+```
+
+## Database Schema
+
+### `aos_trigger_subscription` Table
 
 ```sql
--- 0004_create_aos_trigger_subscription.up.sql
-CREATE TABLE IF NOT EXISTS aos_trigger_subscription (
+CREATE TABLE aos_trigger_subscription (
   id                TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
   trigger_type      TEXT NOT NULL CHECK (trigger_type IN ('cron', 'kafka', 'slack', 'report', 'webhook')),
   source_name       TEXT NOT NULL,
@@ -126,44 +122,91 @@ CREATE TABLE IF NOT EXISTS aos_trigger_subscription (
 );
 ```
 
-## Dev / Sunrise 驗證
+Migration: `0004_create_aos_trigger_subscription.up.sql`
 
-### Dev 環境
+## Audit Events
+
+Each trigger type emits a distinct audit event:
+
+| Trigger | Event Type | Actor |
+|---------|-----------|-------|
+| Kafka | `aos.trigger.kafka.received` | `aos` |
+| Slack | `aos.trigger.slack.received` | `aos` |
+| Report | `aos.trigger.report.received` | `aos` |
+| Webhook | `aos.trigger.webhook.received` | `aos` |
+
+Events are written to both `aos_audit` and `audit_event` tables via `AuditEventBridge`.
+
+## Verification
+
+### Dev Environment
 
 ```bash
-# 啟動容器
-cd docker && docker compose --profile app up -d
+# Start AOS
+cd projects/AOS
+npm install
+npm run dev
 
-# AOS 會自動啟動所有 trigger（部分 mock 模式）
-# Slack: mock events only
-# Kafka: 需 Kafka broker 連線
-# Webhook: curl -X POST http://localhost:3000/api/aos/webhook \
-#   -H 'Content-Type: application/json' \
-#   -H 'X-AOS-Signature: <hmac>' \
-#   -H 'X-AOS-Source: erpnext' \
-#   -d '{"event":"test"}'
+# Verify triggers are active
+# Check logs for: [AOS] Triggers active: cron, kafka, slack, report, webhook
 ```
 
-### Sunrise 環境
-
-正式/類正式環境需設定正確的環境變數：
-
-- `KAFKA_BROKERS`: sunrise.test 或 sunrise.office 的 Kafka 位址（使用外部 IP + port）
-- `SLACK_BOT_TOKEN` / `SLACK_APP_TOKEN`: 正式 Slack App credentials
-- `WEBHOOK_SECRET_*`: 各 webhook source 的真實 secret
-
-**跨容器連線注意**：正式環境中，容器視為獨立部署單元。跨服務連線不得依賴 Docker 內部 service name / network alias。需使用外部 IP + port。
-
-## 整合測試
+### Integration Tests
 
 ```bash
 cd projects/AOS
-npm test tests/integration/triggers.integration.test.ts
+npm run test:integration
+# Runs tests/integration/triggers.integration.test.ts
+# 6+ test cases covering all 4 trigger types
 ```
 
-測試涵蓋：
-1. KafkaTrigger 白名單 + 非白名單過濾
-2. SlackTrigger mock mention
-3. ReportTrigger 異常偵測 + 正常值不觸發
-4. WebhookTrigger 合法/非法 HMAC
-5. 共用 `TriggerHandler.onTrigger` 統一進入
+### Production (sunrise.test / sunrise.office)
+
+1. Set environment variables in container config
+2. Run migration: `npm run migrate-up`
+3. Start AOS container
+4. Verify audit events appear in `audit_event` table
+5. Test webhook endpoint: `curl -X POST https://<host>/api/aos/webhook`
+
+## Troubleshooting
+
+### KafkaTrigger not receiving events
+
+- Check `KAFKA_BROKERS` is correct
+- Verify topic is in whitelist
+- Check consumer group ID is unique (`aos-trigger-group`)
+- Verify Kafka cluster is accessible
+
+### SlackTrigger not connecting
+
+- Verify `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN` are valid
+- Check Socket Mode is enabled in Slack app settings
+- Verify bot is installed in the workspace
+
+### ReportTrigger not detecting anomalies
+
+- Check cron schedule is correct
+- Verify PG connection string
+- Check query returns expected results
+- Verify threshold is appropriate for the data
+
+### WebhookTrigger rejecting requests
+
+- Verify `X-AOS-Signature` header is present
+- Check HMAC computation matches (same secret, SHA-256, hex encoding)
+- Verify `X-AOS-Source` matches registered source name
+- Check request body is valid JSON
+
+## License Compliance
+
+All dependencies are MIT / Apache-2.0 / PostgreSQL License:
+
+| Package | License |
+|---------|---------|
+| `croner` | MIT |
+| `kafkajs` | Apache-2.0 |
+| `@slack/bolt` | MIT |
+| `fastify` | MIT |
+| `pg` | MIT |
+
+Verify with: `npx license-checker --production --csv`

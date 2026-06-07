@@ -8,7 +8,7 @@
  * License verified: @slack/bolt is MIT licensed.
  */
 
-import { App, Events } from '@slack/bolt';
+import { App } from '@slack/bolt';
 import type { Trigger, TriggerHandler, TriggerEvent, SlackTriggerConfig } from '../../../interfaces/trigger';
 
 export interface SlackTriggerOptions {
@@ -42,21 +42,22 @@ export class SlackTrigger implements Trigger {
     this.running = true;
 
     this.app = new App({
-      tokenVerification: this.config.botToken,
+      token: this.config.botToken,
       appToken: this.config.appToken,
       socketMode: true,
     });
 
     // Listen for app_mention (e.g., @AOS in a channel)
-    this.app.event(Events.APP_MENTION, async ({ event, say }) => {
-      await this.handleEvent(event, 'app_mention', say);
+    this.app.event('app_mention', async ({ event }) => {
+      await this.handleEvent(event as unknown as Record<string, unknown>, 'app_mention');
     });
 
     // Listen for DM messages to the bot
-    this.app.event(Events.MESSAGE, async ({ event, say }) => {
+    this.app.event('message', async ({ event }) => {
       // Only handle DMs (im type) or direct mentions
-      if (event.channel_type === 'im') {
-        await this.handleEvent(event, 'message.im', say);
+      const evt = event as unknown as Record<string, unknown>;
+      if (evt.channel_type === 'im') {
+        await this.handleEvent(evt, 'message.im');
       }
     });
 
@@ -77,7 +78,6 @@ export class SlackTrigger implements Trigger {
   private async handleEvent(
     event: Record<string, unknown>,
     eventType: string,
-    _say?: (message: string | Record<string, unknown>) => Promise<void>,
   ): Promise<void> {
     if (!this.handler || !this.running) {
       return;

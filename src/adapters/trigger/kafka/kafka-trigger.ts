@@ -85,7 +85,6 @@ export class KafkaTrigger implements Trigger {
 
     await this.consumer.run({
       eachMessage: this.onMessage.bind(this),
-      maxWaitTime: 1000,
     });
 
     console.log(`[KafkaTrigger] Started, subscribed to ${ALL_KAFKA_TOPICS.length} topics, whitelist: ${this.whitelist.size}`);
@@ -120,8 +119,6 @@ export class KafkaTrigger implements Trigger {
         topic,
         key: message.key?.toString() ?? null,
         data: this.parsePayload(payload),
-        partition: message.partition,
-        offset: message.offset,
       },
       timestamp: new Date(),
       source: topic,
