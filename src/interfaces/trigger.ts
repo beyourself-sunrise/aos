@@ -10,7 +10,7 @@ export interface Trigger {
   stop(): Promise<void>;
 }
 
-export type TriggerType = 'cron' | 'kafka' | 'slack' | 'webhook';
+export type TriggerType = 'cron' | 'kafka' | 'slack' | 'report' | 'webhook';
 
 export interface TriggerHandler {
   onTrigger(event: TriggerEvent): Promise<void>;
@@ -40,6 +40,20 @@ export interface SlackTriggerConfig {
   botToken: string;
   appToken: string;
   channels: string[];
+}
+
+export interface ReportTriggerConfig {
+  schedule: string;
+  timezone?: string;
+  queries: ReportQuery[];
+  anomalyThreshold?: number;
+}
+
+export interface ReportQuery {
+  name: string;
+  query: string;
+  threshold: number;
+  description?: string;
 }
 
 export interface WebhookTriggerConfig {
