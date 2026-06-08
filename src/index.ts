@@ -19,17 +19,26 @@ import { SlackTrigger } from './adapters/trigger/slack/slack-trigger';
 import { ReportTrigger } from './adapters/trigger/report/report-trigger';
 import { WebhookTrigger } from './adapters/trigger/webhook/webhook-trigger';
 import { AuditEventBridge } from './adapters/audit/audit-event-bridge';
+import { AgentLoader } from './agents/loader';
+import { AgentRunner } from './agents/runner';
+import { ObservationStore } from './observational-memory/observation-store';
+import { WorkflowRunner } from './workflows/runner';
+import { TriggerWake } from './workflows/trigger-wake';
 import { Client as PgClient } from 'pg';
 import type { Trigger, TriggerHandler, TriggerEvent } from './interfaces/trigger';
+import * as path from 'path';
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
 /**
  * Shared TriggerHandler — all triggers route through this single callback.
- * Logs the event to audit and can be extended to create AOS sessions/tasks.
+ * Logs the event to audit, wakes matching workflows, and can create AOS sessions/tasks.
  */
 class SharedTriggerHandler implements TriggerHandler {
-  constructor(private audit: AuditEventBridge) {}
+  constructor(
+    private audit: AuditEventBridge,
+    private triggerWake: TriggerWake,
+  ) {}
 
   async onTrigger(event: TriggerEvent): Promise<void> {
     const eventType = `aos.trigger.${event.type}.received`;
@@ -47,6 +56,12 @@ class SharedTriggerHandler implements TriggerHandler {
       },
       createdAt: event.timestamp,
     });
+
+    // Wake matching workflows
+    const woken = await this.triggerWake.processEvent(event);
+    if (woken.length > 0) {
+      console.log(`[TriggerHandler] Woke ${woken.length} workflow(s):`, woken);
+    }
   }
 
   private summarize(payload: unknown): string {
@@ -60,7 +75,7 @@ class SharedTriggerHandler implements TriggerHandler {
 }
 
 async function main(): Promise<void> {
-  console.log('[AOS] Starting Agent Operating System v0.2.0');
+  console.log('[AOS] Starting Agent Operating System v0.3.0 (MVP)');
   console.log('[AOS] Port:', PORT);
 
   // Create PG client for audit and report trigger
@@ -72,11 +87,40 @@ async function main(): Promise<void> {
   // Create audit bridge
   const audit = new AuditEventBridge(pgClient);
 
-  // Create shared trigger handler
-  const handler = new SharedTriggerHandler(audit);
+  // --- MVP: Initialize core components ---
+
+  // Observation store (memory)
+  const observationStore = new ObservationStore(pgClient);
+
+  // Workflow runner
+  const workflowRunner = new WorkflowRunner(pgClient, audit);
+
+  // Trigger wake (matches trigger events to waiting workflows)
+  const triggerWake = new TriggerWake(workflowRunner, audit);
+
+  // Agent loader + runner
+  const agentsDir = path.join(__dirname, 'agents');
+  const agentLoader = new AgentLoader(agentsDir, audit);
+  const agentRunner = new AgentRunner(audit, observationStore);
+
+  // Load all personas
+  const personas = await agentLoader.loadAll();
+  console.log(`[AOS] Loaded ${personas.size} persona(s):`, Array.from(personas.keys()));
+
+  // Initialize all agents
+  for (const [id, config] of personas) {
+    await agentLoader.initAgent(config);
+    console.log(`[AOS] Initialized agent: ${id} (${config.name})`);
+  }
+
+  // Create shared trigger handler (with workflow wake integration)
+  const handler = new SharedTriggerHandler(audit, triggerWake);
 
   // Create server
   const server = await createServer();
+
+  // Attach audit bridge to server for route access
+  (server as any).audit = audit;
 
   // --- Start all triggers ---
   const triggers: Trigger[] = [];
@@ -150,6 +194,23 @@ async function main(): Promise<void> {
     console.log(`[AOS] Started trigger: ${trigger.type}`);
   }
 
+  // --- MVP: Start workflow timeout cron (every 5 minutes) ---
+  const timeoutCron = new CronTrigger({
+    schedule: '*/5 * * * *', // Every 5 minutes
+    timezone: 'Asia/Taipei',
+    payload: { task: 'workflow-timeout-scan' },
+  });
+  const timeoutHandler: TriggerHandler = {
+    async onTrigger() {
+      const timedOut = await triggerWake.scanTimeouts();
+      if (timedOut.length > 0) {
+        console.log(`[AOS] Workflow timeout scan: ${timedOut.length} workflow(s) timed out`);
+      }
+    },
+  };
+  await timeoutCron.start(timeoutHandler);
+  console.log('[AOS] Started workflow timeout cron (every 5 min)');
+
   // Start server
   await server.listen({ port: PORT, host: '0.0.0.0' });
   console.log(`[AOS] Server listening on http://0.0.0.0:${PORT}`);
@@ -159,7 +220,12 @@ async function main(): Promise<void> {
   console.log('  POST /dev/start-bpmn');
   console.log('  POST /dev/call-mcp');
   console.log('  POST /api/aos/webhook');
+  console.log('  GET  /api/aos/audit');
+  console.log('  GET  /api/aos/audit/types');
+  console.log('  GET  /api/aos/audit/summary');
   console.log('[AOS] Triggers active: cron, kafka, slack, report, webhook');
+  console.log(`[AOS] Personas active: ${Array.from(personas.keys()).join(', ')}`);
+  console.log('[AOS] MVP features: multi-agent, observational memory, workflows, audit log, admin UI');
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {
@@ -167,6 +233,7 @@ async function main(): Promise<void> {
     for (const trigger of triggers) {
       await trigger.stop();
     }
+    await timeoutCron.stop();
     await server.close();
     await pgClient.end();
     console.log('[AOS] Shutdown complete');
@@ -178,6 +245,7 @@ async function main(): Promise<void> {
     for (const trigger of triggers) {
       await trigger.stop();
     }
+    await timeoutCron.stop();
     await server.close();
     await pgClient.end();
     console.log('[AOS] Shutdown complete');

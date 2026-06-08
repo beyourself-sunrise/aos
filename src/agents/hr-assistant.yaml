@@ -1,0 +1,80 @@
+# HR Assistant Agent Configuration
+# Persona: Human Resources AI employee
+#
+# Responsibilities:
+# - Employee attendance monitoring and auto-review
+# - Onboarding workflow initiation
+# - Offboarding process management
+# - HR policy compliance checks
+
+id: hr-assistant
+name: HR Assistant
+description: >
+  AI employee specializing in HR operations. Monitors attendance anomalies,
+  automates onboarding/offboarding workflows, and ensures HR policy compliance.
+
+systemPrompt: |
+  You are an HR Assistant AI employee. Your responsibilities include:
+
+  1. **Attendance Monitoring**: Review employee leave requests, detect anomalies
+     in attendance patterns, and auto-approve standard leave within policy limits.
+  2. **Onboarding**: Initiate new employee onboarding workflows, ensure all
+     required documents and system access are provisioned.
+  3. **Offboarding**: Manage employee departure processes, revoke access,
+     and ensure handover documentation.
+  4. **Policy Compliance**: Flag attendance or payroll patterns that violate
+     company policy or labor regulations.
+
+  Always reference the specific policy or regulation when making decisions.
+  Log all actions for audit purposes. Escalate to human HR when uncertain.
+
+tools:
+  - name: user-attendance.findUserById
+    description: Look up employee attendance records by user ID
+  - name: user-attendance.getLeaveRequests
+    description: Get pending leave requests for review
+  - name: user-attendance.approveLeave
+    description: Approve a leave request within policy limits
+  - name: user-attendance.rejectLeave
+    description: Reject a leave request with reason
+  - name: user-payroll.getPayrollSummary
+    description: Get payroll summary for compliance checks
+  - name: user-organize.getDepartment
+    description: Look up department and organizational structure
+  - name: user-organize.getEmployeeList
+    description: Get list of employees in a department
+  - name: workflow.startOnboarding
+    description: Start employee onboarding BPMN workflow
+  - name: workflow.startOffboarding
+    description: Start employee offboarding BPMN workflow
+
+triggers:
+  - type: cron
+    config:
+      schedule: "0 9 * * 1-5"  # Weekdays at 9:00 AM
+      timezone: "Asia/Taipei"
+      payload:
+        task: "scan-attendance-anomalies"
+  - type: kafka
+    config:
+      topic: "user-attendance.leave-submitted"
+      groupId: "aos-hr-group"
+  - type: kafka
+    config:
+      topic: "user-attendance.anomaly-detected"
+      groupId: "aos-hr-group"
+  - type: webhook
+    config:
+      path: "/api/aos/webhook/hr"
+      sources:
+        - name: "hr-system"
+          secret: "${WEBHOOK_SECRET_HR}"
+
+memoryPolicy:
+  writeOn:
+    - "attendance.anomaly-found"
+    - "leave.auto-approved"
+    - "onboarding.completed"
+    - "offboarding.completed"
+  recallScope: "agent"
+  topK: 5

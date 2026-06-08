@@ -61,6 +61,21 @@ export class SlackTrigger implements Trigger {
       }
     });
 
+    // In test/mock mode (token starts with xoxb-test or xapp-test), skip the
+    // real Socket Mode connection so tests can use simulateEvent() instead.
+    const isMockToken =
+      this.config.botToken?.startsWith('xoxb-test') === true ||
+      this.config.botToken?.startsWith('xapp-test') === true ||
+      this.config.appToken?.startsWith('xoxb-test') === true ||
+      this.config.appToken?.startsWith('xapp-test') === true;
+
+    if (isMockToken) {
+      console.log(
+        `[SlackTrigger] Started in MOCK mode (no real Slack connection); use simulateEvent() to inject events`,
+      );
+      return;
+    }
+
     await this.app.start();
     console.log(`[SlackTrigger] Started in Socket Mode, monitoring for @${this.botName} mentions`);
   }

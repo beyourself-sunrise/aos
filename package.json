@@ -1,7 +1,7 @@
 {
   "name": "aos",
   "version": "0.1.0",
-  "description": "Agent Operating System — AI 員工運行平台",
+  "description": "Agent Operating System \u2014 AI \u54e1\u5de5\u904b\u884c\u5e73\u53f0",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -19,13 +19,17 @@
     "croner": "^8.0.0",
     "fastify": "^4.28.0",
     "kafkajs": "^2.2.4",
-    "pg": "^8.12.0"
+    "pg": "^8.12.0",
+    "js-yaml": "^4.1.0",
+    "socket.io": "^4.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
     "typescript": "^5.5.0",
     "vitest": "^1.6.0",
-    "tsx": "^4.7.0"
+    "tsx": "^4.7.0",
+    "@types/js-yaml": "^4.0.0",
+    "@types/socket.io": "^3.0.0"
   }
 }

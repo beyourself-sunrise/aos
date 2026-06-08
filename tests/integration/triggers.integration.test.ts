@@ -10,11 +10,11 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { KafkaTrigger } from '../src/adapters/trigger/kafka/kafka-trigger';
-import { SlackTrigger } from '../src/adapters/trigger/slack/slack-trigger';
-import { ReportTrigger } from '../src/adapters/trigger/report/report-trigger';
-import { WebhookTrigger } from '../src/adapters/trigger/webhook/webhook-trigger';
-import type { TriggerHandler, TriggerEvent } from '../src/interfaces/trigger';
+import { KafkaTrigger } from '../../src/adapters/trigger/kafka/kafka-trigger';
+import { SlackTrigger } from '../../src/adapters/trigger/slack/slack-trigger';
+import { ReportTrigger } from '../../src/adapters/trigger/report/report-trigger';
+import { WebhookTrigger } from '../../src/adapters/trigger/webhook/webhook-trigger';
+import type { TriggerHandler, TriggerEvent } from '../../src/interfaces/trigger';
 
 /**
  * Mock TriggerHandler that records all events for verification.

@@ -35,9 +35,24 @@
 - `audit_event` 整合（`aos.mcp.tool.called` 事件）
 - ZERO 業務邏輯變更到 26 backend module 和 workflow-module
 
+**P1 `aos-triggers` ✅ Done（2026-06-07）**：
+- `Trigger` 介面 Kafka / Slack / Report / Webhook 實作
+- `croner` cron trigger（已在 `aos-poc`）
+- 5 種觸發源整合測試
+- `aos_trigger_subscription` PG 表 + migration（0004_create_aos_trigger_subscription）
+
+**P1 `aos-mvp` ✅ Done（2026-06-07）**：
+- 多 Agent 實例：4 persona YAML（hr-assistant, finance-controller, workflow-monitor, it-ops）+ loader + runner
+- Observational Memory v1：pgvector migration（0005）+ observation-store + summarizer
+- Workflows v1：state machine migration（0006）+ state-machine + runner + trigger-wake
+- Audit log 完整性：4 種新事件類型 + audit query API + MCP tool
+- Admin UI v1：AosAdminView.vue + /aos/admin route
+- 10 user persona 案例整合測試全綠
+- ZERO 業務邏輯變更到 26 backend module 和 workflow-module
+
 **下一步可開工**：
-1. **P1 開工**：可選 3 個 — `aos-mcp-tools-bridge`（3 週）/ `aos-triggers`（4 週）/ `aos-mvp`（2 月）
-2. P2 進階：`aos-workflows` / `aos-observational-memory` / `aos-multi-aos-networks`
+1. **P2 開工**：`aos-workflows` / `aos-observational-memory` / `aos-multi-aos-networks`（可平行）
+2. P2 進階：`aos-persona-self-learning` / `aos-admin-dashboard`
 
 ---
 

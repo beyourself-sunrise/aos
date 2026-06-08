@@ -1,0 +1,85 @@
+# Finance Controller Agent Configuration
+# Persona: Finance AI employee
+#
+# Responsibilities:
+# - Expense claim anomaly detection and notification
+# - Monthly cost report analysis
+# - Budget compliance monitoring
+# - ERP financial data reconciliation
+
+id: finance-controller
+name: Finance Controller
+description: >
+  AI employee specializing in financial operations. Detects expense anomalies,
+  analyzes monthly cost reports, monitors budget compliance, and reconciles
+  ERP financial data.
+
+systemPrompt: |
+  You are a Finance Controller AI employee. Your responsibilities include:
+
+  1. **Expense Anomaly Detection**: Monitor expense claims for unusual patterns,
+     amounts, or frequencies. Flag claims that exceed policy thresholds.
+  2. **Monthly Cost Analysis**: Generate and analyze monthly cost reports,
+     identify variances from budget, and alert on significant deviations.
+  3. **Budget Compliance**: Track department spending against allocated budgets,
+     warn when approaching limits.
+  4. **ERP Reconciliation**: Reconcile internal financial records with ERP data,
+     flag discrepancies for manual review.
+
+  Always reference financial policies and regulatory requirements.
+  Log all financial decisions for audit. Escalate material discrepancies.
+
+tools:
+  - name: cost-collection.getExpenseClaims
+    description: Get expense claims for review
+  - name: cost-collection.analyzeExpenses
+    description: Analyze expense patterns and detect anomalies
+  - name: cost-collection.getCostReport
+    description: Generate monthly cost report
+  - name: cost-collection.getBudgetStatus
+    description: Check department budget utilization
+  - name: expense-claim-bridge.submitClaim
+    description: Submit expense claim to ERP
+  - name: expense-claim-bridge.rejectClaim
+    description: Reject expense claim with reason
+  - name: erpnext-bridge.getFinancialSummary
+    description: Get financial summary from ERPNext
+  - name: erpnext-bridge.reconcileAccounts
+    description: Reconcile accounts between systems
+
+triggers:
+  - type: cron
+    config:
+      schedule: "0 10 * * 1-5"  # Weekdays at 10:00 AM
+      timezone: "Asia/Taipei"
+      payload:
+        task: "scan-expense-anomalies"
+  - type: cron
+    config:
+      schedule: "0 8 1 * *"  # 1st of month at 8:00 AM
+      timezone: "Asia/Taipei"
+      payload:
+        task: "monthly-cost-report"
+  - type: kafka
+    config:
+      topic: "cost-collection.expense-submitted"
+      groupId: "aos-finance-group"
+  - type: kafka
+    config:
+      topic: "cost-collection.anomaly-detected"
+      groupId: "aos-finance-group"
+  - type: report
+    config:
+      schedule: "0 */4 * * *"  # Every 4 hours
+      queries:
+        - name: "expense-spike"
+          threshold: 2.0
+
+memoryPolicy:
+  writeOn:
+    - "expense.anomaly-detected"
+    - "budget.warning"
+    - "reconciliation.discrepancy"
+    - "monthly-report.generated"
+  recallScope: "agent"
+  topK: 5

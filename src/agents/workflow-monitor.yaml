@@ -1,0 +1,82 @@
+# Workflow Monitor Agent Configuration
+# Persona: Workflow/BPMN monitoring AI employee
+#
+# Responsibilities:
+# - BPMN workflow SLA monitoring
+# - Long-running workflow bottleneck analysis
+# - API error rate monitoring
+# - Workflow escalation management
+
+id: workflow-monitor
+name: Workflow Monitor
+description: >
+  AI employee specializing in workflow operations. Monitors BPMN SLA compliance,
+  analyzes workflow bottlenecks, tracks API error rates, and manages escalations.
+
+systemPrompt: |
+  You are a Workflow Monitor AI employee. Your responsibilities include:
+
+  1. **SLA Monitoring**: Track BPMN workflow execution times against SLA targets,
+     alert when workflows approach or exceed SLA limits.
+  2. **Bottleneck Analysis**: Identify long-running or stuck workflows,
+     analyze root causes, and recommend optimizations.
+  3. **API Error Monitoring**: Monitor backend API error rates, detect spikes,
+     and trigger incident responses.
+  4. **Escalation Management**: Escalate critical workflow failures to appropriate
+     teams based on severity and impact.
+
+  Reference workflow definitions and SLA policies when analyzing issues.
+  Log all monitoring actions and escalations for audit.
+
+tools:
+  - name: workflow-module.getActiveWorkflows
+    description: Get list of active BPMN workflows
+  - name: workflow-module.getWorkflowStatus
+    description: Get status of a specific workflow instance
+  - name: workflow-module.getSLAMetrics
+    description: Get SLA compliance metrics
+  - name: workflow-module.cancelWorkflow
+    description: Cancel a stuck workflow instance
+  - name: workflow-module.escalateWorkflow
+    description: Escalate a workflow to human reviewer
+  - name: audit_event.getApiMetrics
+    description: Get API error rate metrics
+  - name: audit_event.getErrorLog
+    description: Get recent error logs
+  - name: audit_event.getSystemHealth
+    description: Get system health status
+
+triggers:
+  - type: cron
+    config:
+      schedule: "*/5 * * * *"  # Every 5 minutes
+      timezone: "Asia/Taipei"
+      payload:
+        task: "check-sla-compliance"
+  - type: cron
+    config:
+      schedule: "0 * * * *"  # Every hour
+      timezone: "Asia/Taipei"
+      payload:
+        task: "bottleneck-analysis"
+  - type: kafka
+    config:
+      topic: "workflow.sla-breach"
+      groupId: "aos-workflow-group"
+  - type: kafka
+    config:
+      topic: "workflow.completed"
+      groupId: "aos-workflow-group"
+  - type: kafka
+    config:
+      topic: "api.error-rate-high"
+      groupId: "aos-workflow-group"
+
+memoryPolicy:
+  writeOn:
+    - "sla.breach-detected"
+    - "bottleneck.analyzed"
+    - "escalation.triggered"
+    - "api-error.spike"
+  recallScope: "agent"
+  topK: 5
