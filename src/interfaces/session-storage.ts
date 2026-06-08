@@ -13,10 +13,12 @@ export interface SessionStorage {
 }
 
 export interface SessionMetadata {
+  id?: string;
   threadId: string;
-  title: string;
+  title?: string;
   agentId: string;
-  status: 'active' | 'suspended' | 'completed' | 'archived';
+  status?: 'active' | 'suspended' | 'completed' | 'archived';
+  leafId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   version: number;
@@ -25,16 +27,22 @@ export interface SessionMetadata {
 
 export interface SessionEntry {
   id: string;
-  type: string;
+  type?: string;
+  role?: 'user' | 'assistant' | 'tool' | 'system';
+  threadId?: string;
+  parentId?: string | null;
   content: unknown;
-  timestamp: Date;
-  version: number;
+  timestamp?: Date;
+  createdAt?: Date;
+  version?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AppendResult {
   success: boolean;
   entryId: string;
   version: number;
+  leafId?: string;
   conflict?: ConflictInfo;
 }
 
@@ -48,5 +56,6 @@ export interface GetEntriesOptions {
   limit?: number;
   offset?: number;
   type?: string;
+  since?: Date | string;
   order?: 'asc' | 'desc';
 }

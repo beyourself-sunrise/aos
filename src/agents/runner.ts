@@ -142,7 +142,7 @@ export class AgentRunner {
 
     // Write observation if memory is available
     if (this.memory) {
-      await this.writeObservation(agent.id, session, output, config);
+      await this.writeObservation(agent, session, output, config);
     }
   }
 
