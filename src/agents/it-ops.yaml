@@ -1,0 +1,84 @@
+# IT Ops Agent Configuration
+# Persona: IT Operations AI employee
+#
+# Responsibilities:
+# - Deployment health monitoring
+# - PostgreSQL connection pool monitoring
+# - System health checks
+# - Infrastructure alerting
+
+id: it-ops
+name: IT Ops
+description: >
+  AI employee specializing in IT operations. Monitors deployment health,
+  database connection pools, system metrics, and triggers infrastructure alerts.
+
+systemPrompt: |
+  You are an IT Operations AI employee. Your responsibilities include:
+
+  1. **Deployment Health**: Monitor deployment status across all services,
+     detect failed deployments, and trigger rollback procedures.
+  2. **Database Monitoring**: Track PostgreSQL connection pool utilization,
+     query performance, and replication lag.
+  3. **System Health**: Monitor CPU, memory, disk, and network metrics
+     across all infrastructure components.
+  4. **Incident Response**: Detect infrastructure anomalies, trigger alerts,
+     and initiate automated remediation where safe.
+
+  Reference infrastructure runbooks and SLA targets when responding to issues.
+  Log all operational actions for audit. Escalate critical infrastructure issues.
+
+tools:
+  - name: audit_event.getSystemHealth
+    description: Get overall system health status
+  - name: audit_event.getDeploymentStatus
+    description: Get deployment status for all services
+  - name: audit_event.getDbMetrics
+    description: Get PostgreSQL metrics including connection pool
+  - name: audit_event.getInfrastructureAlerts
+    description: Get active infrastructure alerts
+  - name: audit_event.triggerRollback
+    description: Trigger deployment rollback
+  - name: audit_event.restartService
+    description: Restart a specific service
+  - name: audit_event.getLogs
+    description: Get service logs for debugging
+  - name: audit_event.getMetrics
+    description: Get system metrics (CPU, memory, disk, network)
+
+triggers:
+  - type: cron
+    config:
+      schedule: "*/5 * * * *"  # Every 5 minutes
+      timezone: "Asia/Taipei"
+      payload:
+        task: "health-check"
+  - type: cron
+    config:
+      schedule: "*/15 * * * *"  # Every 15 minutes
+      timezone: "Asia/Taipei"
+      payload:
+        task: "db-pool-check"
+  - type: kafka
+    config:
+      topic: "deployment.failed"
+      groupId: "aos-it-ops-group"
+  - type: kafka
+    config:
+      topic: "infrastructure.alert"
+      groupId: "aos-it-ops-group"
+  - type: webhook
+    config:
+      path: "/api/aos/webhook/it-ops"
+      sources:
+        - name: "monitoring"
+          secret: "${WEBHOOK_SECRET_MONITORING}"
+
+memoryPolicy:
+  writeOn:
+    - "deployment.failed"
+    - "db-pool.warning"
+    - "health-check.anomaly"
+    - "incident.resolved"
+  recallScope: "agent"
+  topK: 5

@@ -18,6 +18,7 @@ import { RealTimeStreamService } from '../adapters/realtime/realtime-stream-serv
 import { SubscriptionRegistry } from '../adapters/realtime/subscription-registry';
 import { CrossDeviceConflictResolver } from '../adapters/realtime/conflict-resolver';
 import sessionStreamRoutes from './routes/session-stream';
+import auditRoutes from './routes/audit';
 
 export async function createServer(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
@@ -72,6 +73,7 @@ export async function createServer(): Promise<FastifyInstance> {
 
   // Register routes
   await app.register(sessionStreamRoutes, { prefix: '/api/aos' });
+  await app.register(auditRoutes, { prefix: '/api/aos' });
 
   // Start services
   await eventBus.start();

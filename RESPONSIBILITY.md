@@ -237,16 +237,52 @@ AOS 自有架構 vs 採用 monolithic framework：
 
 詳見 `openspec/changes/aos-runtime-tech-stack/refs/aos-final-decision.md` 附錄 A。
 
-## Phase 1 Scope（規劃中）
+## Phase 1 Scope（MVP Done）
 
 > 完整 roadmap / 依賴 DAG / 時間軸詳見 [ROADMAP.md](./ROADMAP.md)（SSOT）。
 
-- 1 個示範 AI 員工（單一 Agent 實例）
-- 3 種觸發源（cron、Kafka、人類 Slack 訊息）
-- 1 個 workflow 啟動範例
-- Observational Memory 基本能力
-- 與 1 個 backend module 透過 MCP 整合
-- Audit log 落 Beyourself 既有 audit_event 表
+### MVP 交付能力（`aos-mvp` ✅ Done）
+
+#### 多 Agent 實例
+- 4 個預設 persona：HR Assistant、Finance Controller、Workflow Monitor、IT Ops
+- YAML 配置（`src/agents/*.yaml`）：system prompt + tools + triggers + memory policy
+- Agent loader（`src/agents/loader.ts`）：YAML parse + Agent init
+- Agent runner（`src/agents/runner.ts`）：session 生命週期 + memory 整合
+
+#### Observational Memory v1
+- pgvector 儲存（`migrations/0005_create_aos_observation.up.sql`）：vector(1536) + HNSW index
+- Observation store（`src/memory/observation-store.ts`）：write + recall with cosine distance
+- Summarizer（`src/memory/summarizer.ts`）：LLM 摘要 + embedding
+- Agent runner 整合：session 結束自動寫入、啟動自動 recall
+
+#### Workflows v1
+- State machine（`migrations/0006_create_aos_workflow.up.sql`）：5 states + optimistic lock + timeout
+- Workflow runner（`src/workflows/runner.ts`）：start + sync/async step + complete/fail
+- Trigger wake（`src/workflows/trigger-wake.ts`）：trigger event → workflow wake matching
+- Timeout cron：每 5 分鐘掃過期 workflow
+
+#### Audit Log 完整性
+- 4 種新事件類型：execution.* / observation.* / workflow.* / persona.*
+- Audit query API（`src/server/routes/audit.ts`）：GET /api/aos/audit with filters
+- MCP tool 暴露：audit.query
+
+#### Admin UI v1
+- `AosAdminView.vue`：audit log 列表 + 日期/類型過濾
+- `/aos/admin` route
+
+#### 10 User Persona 案例
+- HR 假勤自動審 / Expense 異常偵測 / BPMN SLA 監控 / Deploy 健康
+- 入職流程 / 月度成本報表異常 / BPMN 瓶頸分析 / PG 連線池監控
+- 離職流程 / API 異常率監控
+
+### 原始 Phase 1 規劃（已升級為 MVP）
+
+- ~~1 個示範 AI 員工~~ → **4 個 persona AI 員工**
+- ~~3 種觸發源~~ → **5 種觸發源（cron、Kafka、Slack、Report、Webhook）**
+- ~~1 個 workflow 啟動範例~~ → **完整 Workflow v1 state machine**
+- ~~Observational Memory 基本能力~~ → **完整 Observational Memory v1（pgvector + 摘要 + recall）**
+- ~~與 1 個 backend module 透過 MCP 整合~~ → **26 backend module MCP 化**
+- ~~Audit log 落 Beyourself 既有 audit_event 表~~ → **完整 audit log + 4 種新事件類型 + Admin UI**
 
 ### MCP Tools Bridge（`aos-mcp-tools-bridge` P1）
 
