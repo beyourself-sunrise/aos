@@ -13,8 +13,8 @@
  */
 
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { AuditEvent, AuditFilter } from '../../../interfaces/audit';
-import { AuditEventBridge, AOS_EVENT_TYPES } from '../../../adapters/audit/audit-event-bridge';
+import type { AuditEvent, AuditFilter } from '../../interfaces/audit';
+import { AuditEventBridge, AOS_EVENT_TYPES } from '../../adapters/audit/audit-event-bridge';
 
 /**
  * Register audit routes on a Fastify instance.

@@ -14,7 +14,7 @@ import type { AgentOutput } from '../interfaces/agent';
 
 /** Configuration for the summarizer. */
 export interface SummarizerConfig {
-  model: string;
+  model?: string;
   summaryMaxTokens?: number;
   embeddingModel?: string;
   embeddingDim?: number;

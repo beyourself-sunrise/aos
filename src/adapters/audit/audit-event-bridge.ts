@@ -53,7 +53,7 @@ export type AosEventType = keyof typeof AOS_EVENT_TYPES;
  */
 export class AuditEventBridge implements Audit {
   constructor(
-    private pgClient: PgClient,
+    public readonly pgClient: PgClient,
     private schema: string = 'public',
   ) {}
 

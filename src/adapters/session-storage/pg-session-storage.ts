@@ -185,7 +185,7 @@ export class PgSessionStorage implements SessionStorage {
           });
         }
 
-        return { entryId, version: currentVersion + 1, leafId: entryId };
+        return { success: true, entryId, version: currentVersion + 1, leafId: entryId };
       } catch (err) {
         await this.pgClient.query('ROLLBACK');
         throw err;
