@@ -95,6 +95,11 @@ export class AuditEventBridge implements Audit {
 
   /**
    * Query audit events with filtering.
+   *
+   * Reads from the existing `audit_event` table which uses the `event_type`
+   * column (not `type`). The write path (`log`) and the Beyourself security
+   * module both write to `event_type`, so queries must reference the same
+   * column to avoid silent empty results.
    */
   async query(filter: AuditFilter): Promise<AuditEvent[]> {
     const conditions: string[] = [];
@@ -102,7 +107,7 @@ export class AuditEventBridge implements Audit {
     let argIdx = 1;
 
     if (filter.type) {
-      conditions.push(`type = $${argIdx++}`);
+      conditions.push(`event_type = $${argIdx++}`);
       params.push(filter.type);
     }
     if (filter.actor) {
@@ -129,12 +134,12 @@ export class AuditEventBridge implements Audit {
 
     try {
       const result = await this.pgClient.query(
-        `SELECT id, type, actor, payload, created_at FROM ${this.schema}.audit_event ${whereClause} ORDER BY created_at DESC LIMIT $${argIdx}`,
+        `SELECT id, event_type, actor, payload, created_at FROM ${this.schema}.audit_event ${whereClause} ORDER BY created_at DESC LIMIT $${argIdx}`,
         [...params, limit],
       );
       return result.rows.map((row: Record<string, unknown>) => ({
         id: row.id as string,
-        type: row.type as string,
+        type: row.event_type as string,
         actor: row.actor as string,
         payload: row.payload,
         createdAt: row.created_at as Date,
