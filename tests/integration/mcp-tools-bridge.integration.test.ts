@@ -55,7 +55,7 @@ describe('MCP Tools Bridge Integration', () => {
   beforeAll(async () => {
     // Connect to PG
     pgClient = new PgClient({
-      connectionString: process.env.DATABASE_URL ?? 'postgresql://localhost:5432/beyourself',
+      connectionString: process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? 'postgresql://localhost:5432/aos_test',
     });
     await pgClient.connect();
 

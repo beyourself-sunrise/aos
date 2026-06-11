@@ -103,12 +103,12 @@ export default async function auditRoutes(app: FastifyInstance, _opts: Record<st
 
     try {
       const result = await audit.pgClient.query(
-        `SELECT type, COUNT(*) as count, MAX(created_at) as last_seen
+        `SELECT event_type, COUNT(*) as count, MAX(created_at) as last_seen
          FROM audit_event
-         WHERE type LIKE 'aos.%'
+         WHERE event_type LIKE 'aos.%'
            AND created_at >= $1
            AND created_at <= $2
-         GROUP BY type
+         GROUP BY event_type
          ORDER BY count DESC`,
         [from.toISOString(), to.toISOString()],
       );
@@ -116,10 +116,10 @@ export default async function auditRoutes(app: FastifyInstance, _opts: Record<st
       return reply.send({
         success: true,
         data: result.rows.map((row: Record<string, unknown>) => ({
-          type: row.type as string,
+          type: row.event_type as string,
           count: parseInt(row.count as string, 10),
           lastSeen: row.last_seen as Date,
-          description: AuditEventBridge.getDescription(row.type as string),
+          description: AuditEventBridge.getDescription(row.event_type as string),
         })),
       });
     } catch (err) {

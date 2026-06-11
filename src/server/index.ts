@@ -48,6 +48,14 @@ export async function createServer(): Promise<FastifyInstance> {
   (app as any).io = io;
   (app as any).conflictResolver = conflictResolver;
   (app as any).streamService = streamService;
+  // Provide a fallback audit bridge so route plugins can register without
+  // requiring a caller to wire one in (e.g. tests, POC bring-up).
+  (app as any).audit = {
+    async log(event: { id?: string; type: string; actor: string; payload: unknown }) {
+      app.log.info({ audit: event.type, actor: event.actor }, 'audit fallback');
+    },
+    async query(): Promise<unknown[]> { return []; },
+  };
 
   // socket.io connection handler
   io.on('connection', (socket: Socket) => {

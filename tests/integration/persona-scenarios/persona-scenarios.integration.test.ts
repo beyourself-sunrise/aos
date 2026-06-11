@@ -73,6 +73,11 @@ describe('Persona Scenario Integration Tests', () => {
       `${process.cwd()}/src/agents`,
       audit,
     );
+    await agentLoader.loadAll();
+    for (const personaId of agentLoader.listPersonas()) {
+      const cfg = agentLoader.getConfig(personaId)!;
+      await agentLoader.initAgent(cfg);
+    }
     agentRunner = new AgentRunner(audit, observationStore);
   });
 

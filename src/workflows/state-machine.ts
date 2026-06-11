@@ -20,10 +20,16 @@ import type { Audit } from '../interfaces/audit';
 /** Workflow states. */
 export type WorkflowState = 'pending' | 'running' | 'waiting' | 'done' | 'failed';
 
-/** Valid state transitions. */
+/** Valid state transitions.
+ *
+ * `running -> running` is a self-transition used by `WorkflowRunner.runSyncStep`
+ * to update `context_json` (current step, step result) while keeping the
+ * workflow in the running state. The optimistic lock (`version`) still
+ * increments, so concurrent updates remain safe.
+ */
 export const VALID_TRANSITIONS: Record<WorkflowState, WorkflowState[]> = {
   pending: ['running'],
-  running: ['waiting', 'done', 'failed'],
+  running: ['running', 'waiting', 'done', 'failed'],
   waiting: ['running', 'failed'],
   done: [],
   failed: [],

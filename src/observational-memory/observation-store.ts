@@ -48,71 +48,84 @@ export class ObservationStore implements Memory {
 
   /**
    * Recall observations semantically similar to the query.
-   * Uses cosine distance on the embedding vector.
+   *
+   * Search strategy (decided per call):
+   * - If `embedding` is provided on the query, use vector cosine similarity
+   * - Else if `query.query` string is provided, fall back to full-text search
+   *   (works with or without agent/type/thread filters)
+   * - Else, return observations matching the filters with neutral score
    */
   async recall(query: MemoryQuery): Promise<MemoryEntry[]> {
-    // For v1, we use a simplified approach:
-    // The query embedding must be provided or we fall back to text search
     const limit = query.limit ?? 10;
 
-    // If we have a query string but no embedding, do text search fallback
-    // In production, the caller would embed the query first
-    let results;
+    // Read optional embedding from query (callers may pre-embed the query)
+    const queryEmbedding = (query as { embedding?: number[] }).embedding;
+    const useVector = Array.isArray(queryEmbedding) && queryEmbedding.length > 0;
+    const useTextSearch = !useVector && typeof query.query === 'string' && query.query.length > 0;
 
-    // Check if we have agent_id filter
-    const hasAgentFilter = !!query.agentId;
-    const hasTypeFilter = query.types && query.types.length > 0;
-
-    // Build query with optional filters
-    let sql = `
-      SELECT id, agent_id, content, type, metadata, created_at,
-             1 - (embedding <=> $1::vector) AS score
-      FROM aos_observation
-      WHERE 1=1
-    `;
     const params: unknown[] = [];
-    let paramIdx = 1;
+    let paramIdx = 0;
+    const conditions: string[] = [];
 
-    // For cosine similarity search, we need a query embedding
-    // If no embedding is available, fall back to text search
-    if (query.query && !hasAgentFilter) {
-      // Fallback: full text search when no embedding
+    let sql: string;
+    if (useVector) {
+      paramIdx++;
+      sql = `
+        SELECT id, agent_id, content, type, metadata, created_at,
+               1 - (embedding <=> $${paramIdx}::vector) AS score
+        FROM aos_observation
+        WHERE 1=1
+      `;
+      params.push(JSON.stringify(queryEmbedding));
+    } else if (useTextSearch) {
+      paramIdx++;
       sql = `
         SELECT id, agent_id, content, type, metadata, created_at, 0.5 AS score
         FROM aos_observation
-        WHERE to_tsvector('english', content) @@ to_tsquery('english', $1)
+        WHERE to_tsvector('english', content) @@ to_tsquery('english', $${paramIdx})
       `;
-      params.push(this.toTsQuery(query.query));
-      paramIdx = 1;
+      params.push(this.toTsQuery(query.query!));
+    } else {
+      sql = `
+        SELECT id, agent_id, content, type, metadata, created_at, 1.0 AS score
+        FROM aos_observation
+        WHERE 1=1
+      `;
     }
 
-    if (hasAgentFilter) {
-      sql += ` AND agent_id = $${paramIdx + 1}`;
-      params.push(query.agentId);
+    if (query.agentId) {
       paramIdx++;
+      conditions.push(`agent_id = $${paramIdx}`);
+      params.push(query.agentId);
     }
 
-    if (hasTypeFilter) {
-      const typePlaceholders = query.types!.map((_, i) => `$${paramIdx + i}`).join(', ');
-      sql += ` AND type IN (${typePlaceholders})`;
-      params.push(...query.types!);
-      paramIdx += query.types!.length;
+    if (query.types && query.types.length > 0) {
+      const placeholders = query.types.map((_, i) => {
+        paramIdx++;
+        return `$${paramIdx}`;
+      });
+      conditions.push(`type IN (${placeholders.join(', ')})`);
+      params.push(...query.types);
     }
 
     if (query.threadId) {
-      sql += ` AND source_session_id = $${paramIdx + 1}`;
+      paramIdx++;
+      conditions.push(`source_session_id = $${paramIdx}`);
       params.push(query.threadId);
-      paramIdx++;
     }
 
-    // Apply min score filter
     if (query.minScore !== undefined) {
-      sql += ` AND score >= $${paramIdx + 1}`;
-      params.push(query.minScore);
       paramIdx++;
+      conditions.push(`score >= $${paramIdx}`);
+      params.push(query.minScore);
     }
 
-    sql += ` ORDER BY score DESC LIMIT $${paramIdx + 1}`;
+    if (conditions.length > 0) {
+      sql += ' AND ' + conditions.join(' AND ');
+    }
+
+    paramIdx++;
+    sql += ` ORDER BY score DESC LIMIT $${paramIdx}`;
     params.push(limit);
 
     const result = await this.pgClient.query(sql, params);
