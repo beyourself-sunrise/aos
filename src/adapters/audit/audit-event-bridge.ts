@@ -36,6 +36,10 @@ export const AOS_EVENT_TYPES = {
   // Observation events (MVP)
   'aos.observation.stored': 'Observation stored in memory',
   'aos.observation.recalled': 'Observations recalled from memory',
+  'aos.observation.extracted': 'Observations extracted from session',
+  'aos.observation.consolidated': 'Near-duplicate observations consolidated',
+  'aos.observation.expired': 'Observation expired by TTL',
+  'aos.observation.forgotten': 'Observation forgotten by operator',
   // Workflow events (MVP + P2)
   'aos.workflow.transitioned': 'Workflow state transitioned',
   'aos.workflow.timeout': 'Workflow timed out',
