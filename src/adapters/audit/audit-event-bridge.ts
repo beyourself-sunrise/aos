@@ -52,6 +52,15 @@ export const AOS_EVENT_TYPES = {
   // Persona events (MVP)
   'aos.persona.initialized': 'Persona agent initialized',
   'aos.persona.switched': 'User switched persona',
+  'aos.network.peer.joined': 'Peer joined the cluster',
+  'aos.network.peer.left': 'Peer left the cluster',
+  'aos.network.peer.unhealthy': 'Peer marked unhealthy',
+  'aos.network.leader.elected': 'Leader elected for role',
+  'aos.network.leader.lost': 'Leader lost for role',
+  'aos.network.task.delegated': 'Task delegated to peer',
+  'aos.network.task.completed': 'Delegated task completed',
+  'aos.network.task.failed': 'Delegated task failed permanently',
+  'aos.network.task.escalated': 'Task escalated to supervisor',
 } as const;
 
 /** All known event type keys. */
