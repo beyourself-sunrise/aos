@@ -18,7 +18,7 @@ import { Client as PgClient } from 'pg';
 import type { Audit } from '../interfaces/audit';
 
 /** Workflow states. */
-export type WorkflowState = 'pending' | 'running' | 'waiting' | 'done' | 'failed';
+export type WorkflowState = 'pending' | 'running' | 'waiting' | 'suspended' | 'done' | 'failed' | 'cancelled';
 
 /** Valid state transitions.
  *
@@ -28,11 +28,13 @@ export type WorkflowState = 'pending' | 'running' | 'waiting' | 'done' | 'failed
  * increments, so concurrent updates remain safe.
  */
 export const VALID_TRANSITIONS: Record<WorkflowState, WorkflowState[]> = {
-  pending: ['running'],
-  running: ['running', 'waiting', 'done', 'failed'],
-  waiting: ['running', 'failed'],
+  pending: ['running', 'cancelled'],
+  running: ['running', 'waiting', 'suspended', 'done', 'failed', 'cancelled'],
+  waiting: ['running', 'failed', 'cancelled'],
+  suspended: ['running', 'cancelled'],
   done: [],
   failed: [],
+  cancelled: [],
 };
 
 /** Workflow instance data. */
@@ -43,8 +45,12 @@ export interface WorkflowInstance {
   state: WorkflowState;
   currentStep: string | null;
   contextJson: Record<string, unknown>;
+  checkpoint: Record<string, unknown> | null;
+  parentId: string | null;
   timeoutAt: Date | null;
   errorMessage: string | null;
+  cancelledAt: Date | null;
+  cancelReason: string | null;
   createdAt: Date;
   updatedAt: Date;
   version: number;
@@ -89,7 +95,7 @@ export class StateMachine {
     try {
       // Lock the workflow row
       const result = await this.pgClient.query(
-        'SELECT id, agent_id, name, state, current_step, context_json, timeout_at, error_message, created_at, updated_at, version ' +
+        'SELECT id, agent_id, name, state, current_step, context_json, checkpoint, parent_id, timeout_at, error_message, cancelled_at, cancel_reason, created_at, updated_at, version ' +
           'FROM aos_workflow WHERE id = $1 FOR UPDATE',
         [id],
       );
@@ -138,7 +144,7 @@ export class StateMachine {
 
       // Read back updated row
       const updatedResult = await this.pgClient.query(
-        'SELECT id, agent_id, name, state, current_step, context_json, timeout_at, error_message, created_at, updated_at, version ' +
+        'SELECT id, agent_id, name, state, current_step, context_json, checkpoint, parent_id, timeout_at, error_message, cancelled_at, cancel_reason, created_at, updated_at, version ' +
           'FROM aos_workflow WHERE id = $1',
         [id],
       );
@@ -189,7 +195,7 @@ export class StateMachine {
    */
   async listByAgent(agentId: string, state?: WorkflowState): Promise<WorkflowInstance[]> {
     let query =
-      'SELECT id, agent_id, name, state, current_step, context_json, timeout_at, error_message, created_at, updated_at, version ' +
+      'SELECT id, agent_id, name, state, current_step, context_json, checkpoint, parent_id, timeout_at, error_message, cancelled_at, cancel_reason, created_at, updated_at, version ' +
       'FROM aos_workflow WHERE agent_id = $1';
     const params: unknown[] = [agentId];
 
@@ -257,12 +263,33 @@ export class StateMachine {
       name: row.name as string,
       state: row.state as WorkflowState,
       currentStep: row.current_step as string | null,
-      contextJson: row.context_json as Record<string, unknown>,
+      contextJson: (row.context_json as Record<string, unknown>) ?? {},
+      checkpoint: (row.checkpoint as Record<string, unknown>) ?? null,
+      parentId: (row.parent_id as string) ?? null,
       timeoutAt: row.timeout_at as Date | null,
       errorMessage: row.error_message as string | null,
+      cancelledAt: row.cancelled_at as Date | null,
+      cancelReason: row.cancel_reason as string | null,
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
       version: row.version as number,
     };
+  }
+
+  /**
+   * Find active workflows for registry rehydration.
+   * Returns workflows in running, waiting, or suspended states.
+   * Used by WorkflowRegistry on startup.
+   */
+  async findActive(agentId?: string): Promise<WorkflowInstance[]> {
+    const base =
+      'SELECT id, agent_id, name, state, current_step, context_json, checkpoint, parent_id, timeout_at, error_message, cancelled_at, cancel_reason, created_at, updated_at, version ' +
+      'FROM aos_workflow WHERE state IN (\'running\',\'waiting\',\'suspended\')';
+
+    const query = agentId ? `${base} AND agent_id = $1` : base;
+    const params = agentId ? [agentId] : [];
+
+    const result = await this.pgClient.query(query, params);
+    return result.rows.map((row: Record<string, unknown>) => this.rowToInstance(row));
   }
 }

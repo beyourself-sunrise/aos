@@ -36,10 +36,15 @@ export const AOS_EVENT_TYPES = {
   // Observation events (MVP)
   'aos.observation.stored': 'Observation stored in memory',
   'aos.observation.recalled': 'Observations recalled from memory',
-  // Workflow events (MVP)
+  // Workflow events (MVP + P2)
   'aos.workflow.transitioned': 'Workflow state transitioned',
   'aos.workflow.timeout': 'Workflow timed out',
   'aos.workflow.woken': 'Workflow woken by trigger',
+  'aos.workflow.suspended': 'Workflow suspended by operator',
+  'aos.workflow.resumed': 'Workflow resumed by operator or trigger',
+  'aos.workflow.cancelled': 'Workflow cancelled by operator',
+  'aos.workflow.subworkflow.started': 'Sub-workflow spawned',
+  'aos.workflow.subworkflow.completed': 'Sub-workflow completed and joined',
   // Persona events (MVP)
   'aos.persona.initialized': 'Persona agent initialized',
   'aos.persona.switched': 'User switched persona',

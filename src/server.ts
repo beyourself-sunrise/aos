@@ -16,6 +16,10 @@ import { SdkMCPClient } from './adapters/mcp/client/mcp-client';
 import { CamundaBpmnStarter } from './adapters/bpmn/camunda-starter';
 import { AuditEventBridge } from './adapters/audit/audit-event-bridge';
 import { createPgClient, connectPgClient, disconnectPgClient } from './adapters/pg/pg-client';
+import { WorkflowRunner } from './workflows/runner';
+import { WorkflowRegistry } from './workflows/registry';
+import { StateMachine } from './workflows/state-machine';
+import { registerWorkflowRoutes } from './server/routes/workflow';
 import type { Session, SessionContext, SessionEntry } from './interfaces/agent';
 import type { Audit, AuditEvent, AuditFilter } from './interfaces/audit';
 
@@ -50,6 +54,16 @@ export async function createServer(): Promise<FastifyInstance> {
       await connectPgClient(pgClient);
       auditBridge = new AuditEventBridge(pgClient);
       app.addHook('onClose', () => disconnectPgClient(pgClient));
+
+      // Wire workflow runner + registry
+      const stateMachine = new StateMachine(pgClient, auditBridge);
+      const registry = await WorkflowRegistry.rehydrate(stateMachine);
+      const runner = new WorkflowRunner(pgClient, auditBridge, registry);
+      (app as any).workflowRunner = runner;
+
+      // Register workflow routes
+      registerWorkflowRoutes(app, runner);
+      app.log.info(`[Workflow] Registry hydrated with ${registry.activeCount} active workflows`);
     } catch (err) {
       console.log('[Server] PG not available, using fallback audit:', (err as Error).message);
     }
