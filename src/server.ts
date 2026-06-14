@@ -19,6 +19,8 @@ import { createPgClient, connectPgClient, disconnectPgClient } from './adapters/
 import { WorkflowRunner } from './workflows/runner';
 import { WorkflowRegistry } from './workflows/registry';
 import { StateMachine } from './workflows/state-machine';
+import { registerNetworkRoutes } from './server/routes/network';
+import { PeerRegistry } from './network/peer-registry';
 import { registerMemoryRoutes } from './server/routes/memory';
 import type { Session, SessionContext, SessionEntry } from './interfaces/agent';
 import type { Audit, AuditEvent, AuditFilter } from './interfaces/audit';
@@ -63,6 +65,11 @@ export async function createServer(): Promise<FastifyInstance> {
 
       // Register workflow routes
       registerWorkflowRoutes(app, runner);
+      const peerReg = new PeerRegistry(pgClient);
+      await peerReg.rehydrate();
+      registerNetworkRoutes(app, peerReg);
+      (app as any).peerRegistry = peerReg;
+
       registerMemoryRoutes(app, pgClient, auditBridge);
       app.log.info(`[Workflow] Registry hydrated with ${registry.activeCount} active workflows`);
     } catch (err) {
