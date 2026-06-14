@@ -19,7 +19,7 @@ import { createPgClient, connectPgClient, disconnectPgClient } from './adapters/
 import { WorkflowRunner } from './workflows/runner';
 import { WorkflowRegistry } from './workflows/registry';
 import { StateMachine } from './workflows/state-machine';
-import { registerWorkflowRoutes } from './server/routes/workflow';
+import { registerMemoryRoutes } from './server/routes/memory';
 import type { Session, SessionContext, SessionEntry } from './interfaces/agent';
 import type { Audit, AuditEvent, AuditFilter } from './interfaces/audit';
 
@@ -63,6 +63,7 @@ export async function createServer(): Promise<FastifyInstance> {
 
       // Register workflow routes
       registerWorkflowRoutes(app, runner);
+      registerMemoryRoutes(app, pgClient, auditBridge);
       app.log.info(`[Workflow] Registry hydrated with ${registry.activeCount} active workflows`);
     } catch (err) {
       console.log('[Server] PG not available, using fallback audit:', (err as Error).message);
