@@ -182,13 +182,12 @@
 
 ## 更新流程
 
-本檔更新 MUST 走 worktree pipeline（multi-file edit）：
+更新本檔時：
 
-1. 開 worktree（`docs-aos-roadmap-update` 或類似 slug）
-2. 改 `projects/AOS/ROADMAP.md` + 同步各個引用文件
-3. 跑驗證：`check-archive-readiness.sh aos-*`（不應破壞既有 change）
-4. `agent-finish.sh <slug> --auto-merge`（已 approved direction）
-5. 更新 `verified_at` 日期在 frontmatter
+1. 改 `projects/AOS/ROADMAP.md`，並同步必要引用文件。
+2. 視變更範圍執行合適驗證，例如 `check-archive-readiness.sh aos-*`。
+3. 更新 frontmatter 的 `verified_at` 日期。
+4. Git branch、worktree、commit、push、PR、review 與 merge lifecycle 由操作人自行選擇；AOS 不要求特定流程。
 
 ### Frontmatter
 
